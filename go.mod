@@ -1,4 +1,4 @@
-module github.com/den-vasyliev/kbot
+module github.com/rshuvalov/kbot
 
 go 1.19
 
