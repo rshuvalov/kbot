@@ -32,8 +32,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Create full registry path
         run: echo "REGISTRY_FULL=${{ env.REGISTRY }}/${{ github.actor }}" >> $GITHUB_ENV
-      - name: echo REGISTRY_FULL
-        run: echo $REGISTRY_FULL
       - name: Build&Push
         env:
           APP: "kbot"
