@@ -32,10 +32,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Create full registry path
         run: echo "REGISTRY_FULL=${{ env.REGISTRY }}/${{ github.actor }}" >> $GITHUB_ENV
+      - name: echo REGISTRY_FULL
+        run: echo $REGISTRY_FULL
       - name: Build&Push
         env:
           APP: "kbot"
-          REGISTRY: '${{ env.REGISTRY_FULL }}'
+          REGISTRY: ${{ env.REGISTRY_FULL }}
         run: make image push TARGETARCH=$TARGETARCH
       - name: Clean
         run: make clean TARGETARCH=$TARGETARCH
