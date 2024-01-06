@@ -47,6 +47,7 @@ jobs:
   cd:
     name: CD
     needs: ci
+    permissions: write-all
     runs-on: ubuntu-latest
 
     steps:
