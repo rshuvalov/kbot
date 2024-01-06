@@ -12,9 +12,7 @@ env:
 jobs:
   ci:
     name: CI
-    permissions:
-      contents: read
-      packages: write
+    permissions: write-all
     runs-on: ubuntu-latest
 
     steps:
