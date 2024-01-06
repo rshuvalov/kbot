@@ -40,6 +40,9 @@ jobs:
           REGISTRY: ${{ env.REGISTRY_FULL }}
         run: make image push TARGETARCH=$TARGETARCH
       - name: Clean
+        env:
+          APP: "kbot"
+          REGISTRY: ${{ env.REGISTRY_FULL }}
         run: make clean TARGETARCH=$TARGETARCH
       
   cd:
