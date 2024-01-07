@@ -4,8 +4,8 @@
 replicaCount: 1
 image:
   registry: "ghcr.io"
-  repository: "rshuvalov"
-  tag: "1.1.0-790e17f"
+  repository: "rshuvalov/kbot"
+  tag: "v1.2.0-490af5e"
   os: "linux"
   arch: "amd64"
 secret:
