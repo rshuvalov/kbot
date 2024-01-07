@@ -3,6 +3,7 @@ pipeline {
     environment {
         REPO = "https://github.com/rshuvalov/kbot"
         BRANCH = "main"
+        REGISTRY = "rshuvalov"
     }
     parameters {
         choice(name: "OS", choices: ["linux", "darwin", "windows", "all"], description: "Pick OS")
