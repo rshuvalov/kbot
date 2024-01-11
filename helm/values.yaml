@@ -7,7 +7,7 @@ chart:
 image:
   registry: "ghcr.io"
   repository: "rshuvalov/kbot"
-  tag: "v1.2.0-5c83365"
+  tag: "v1.2.0-108b7f8"
   os: "linux"
   arch: "amd64"
 secret:
