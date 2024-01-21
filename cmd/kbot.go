@@ -4,20 +4,78 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stianeikeland/go-rpio"
 	telebot "gopkg.in/telebot.v3"
+
+	"github.com/hirosassa/zerodriver"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 )
 
+type CurrencyResponse struct {
+	Rate float64 `json:"rate"`
+}
+
+type DatetimeResponse struct {
+	Datetime string `json:"datetime"`
+}
+
 var (
-	// TeleToken bot
-	TeleToken = os.Getenv("TELE_TOKEN")
+	TeleToken   = os.Getenv("TELE_TOKEN")
+	MetricsHost = os.Getenv("METRICS_HOST")
 )
+
+func initMetrics(ctx context.Context) {
+
+	// Create a new OTLP Metric gRPC exporter with the specified endpoint and options
+	exporter, _ := otlpmetricgrpc.New(
+		ctx,
+		otlpmetricgrpc.WithEndpoint(MetricsHost),
+		otlpmetricgrpc.WithInsecure(),
+	)
+
+	// Define the resource with attributes that are common to all metrics.
+	// labels/tags/resources that are common to all metrics.
+	resource := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
+	)
+
+	// Create a new MeterProvider with the specified resource and reader
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(resource),
+		sdkmetric.WithReader(
+			// collects and exports metric data every 10 seconds.
+			sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(10*time.Second)),
+		),
+	)
+
+	// Set the global MeterProvider to the newly created MeterProvider
+	otel.SetMeterProvider(mp)
+}
+
+func pmetrics(ctx context.Context, payload string) {
+	// Get the global MeterProvider and create a new Meter with the name "kbot_time_counter"
+	meter := otel.GetMeterProvider().Meter("kbot_counter")
+
+	// Get or create an Int64Counter instrument with the name "kbot_utils_<payload>"
+	counter, _ := meter.Int64Counter(fmt.Sprintf("kbot_utils_%s", payload))
+
+	// Add a value of 1 to the Int64Counter
+	counter.Add(ctx, 1)
+}
 
 // kbotCmd represents the kbot command
 var kbotCmd = &cobra.Command{
@@ -31,8 +89,9 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		logger := zerodriver.NewProductionLogger()
 
-		fmt.Printf("kbot %s started", appVersion)
+		fmt.Printf("kbot %s started\n", appVersion)
 
 		kbot, err := telebot.NewBot(telebot.Settings{
 			URL:    "",
@@ -41,63 +100,66 @@ to quickly create a Cobra application.`,
 		})
 
 		if err != nil {
-			log.Fatalf("Plaese check TELE_TOKEN env variable. %s", err)
+			logger.Fatal().Str("Error", err.Error()).Msg("Plaese check TELE_TOKEN env variable")
 			return
+		} else {
+			logger.Info().Str("Version", appVersion).Msg("kbot started")
 		}
-
-		err = rpio.Open()
-		if err != nil {
-			log.Printf("Unable to open gpio: %s", err.Error())
-		}
-
-		defer rpio.Close()
-
-		trafficSignal := make(map[string]map[string]int8)
-
-		trafficSignal["red"] = make(map[string]int8)
-		trafficSignal["amber"] = make(map[string]int8)
-		trafficSignal["green"] = make(map[string]int8)
-
-		trafficSignal["red"]["pin"] = 12
-		//default on/off
-		//trafficSignal["red"]["on"]=0
-		trafficSignal["amber"]["pin"] = 27
-		trafficSignal["green"]["pin"] = 22
 
 		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
+			var err error
 
-			var (
-				err error
-				pin = rpio.Pin(0)
-			)
-			log.Print(m.Message().Payload, m.Text())
+			logger.Info().Str("Payload", m.Text()).Msg(m.Message().Payload)
+			log.Print("m.Message().Payload: ", m.Message().Payload, " m.Text(): ", m.Text())
+
 			payload := m.Message().Payload
+			pmetrics(context.Background(), payload)
 
 			switch payload {
-			case "hello":
-				err = m.Send(fmt.Sprintf("Hello I'm Kbot %s!", appVersion))
-
-			case "red", "amber", "green":
-				pin = rpio.Pin(trafficSignal[payload]["pin"])
-				if trafficSignal[payload]["on"] == 0 {
-					pin.Output()
-					trafficSignal[payload]["on"] = 1
-				} else {
-					pin.Input()
-					trafficSignal[payload]["on"] = 0
+			case "time":
+				resp, err1 := http.Get("http://worldtimeapi.org/api/timezone/Europe/Kyiv")
+				if err1 != nil {
+					err = m.Send("Ooops! Can not show a time right now")
+					break
+				}
+				defer resp.Body.Close()
+				body, err2 := io.ReadAll(resp.Body)
+				if err2 != nil {
+					err = m.Send("Ooops! Can not show a time right now")
+					break
+				}
+				var data DatetimeResponse
+				err3 := json.Unmarshal(body, &data)
+				if err3 != nil {
+					fmt.Println("error:", err3)
+					break
+				}
+				err = m.Send(data.Datetime)
+			case "rate":
+				resp, err1 := http.Get("https://bank.gov.ua/NBUStatService/v1/statdirectory/dollar_info?json")
+				if err1 != nil {
+					err = m.Send("Ooops! Can not show a time right now")
+					break
+				}
+				defer resp.Body.Close()
+				body, err2 := io.ReadAll(resp.Body)
+				if err2 != nil {
+					err = m.Send("Ooops! Can not show a time right now")
+					break
+				}
+				var data []CurrencyResponse
+				err3 := json.Unmarshal([]byte(body), &data)
+				if err3 != nil {
+					fmt.Println("error:", err3)
+					break
 				}
 
-				err = m.Send(fmt.Sprintf("Switch %s light signal to %d", payload, trafficSignal[payload]["on"]))
-
+				err = m.Send(fmt.Sprintf("%f", data[0].Rate))
 			default:
-				err = m.Send("Usage: /s red|amber|green")
-
+				err = m.Send("Commands: /show time|rate")
 			}
-
 			return err
-
 		})
-
 		kbot.Start()
 	},
 }
