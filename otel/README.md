@@ -1,8 +1,14 @@
+## Usage
+
+Create env file with configurations
 ```
-docker run -it \
--v /var/lib/docker/containers:/var/lib/docker/containers \
--v ${PWD}/fluent-bit/docker-metadata.lua:/fluent-bit/bin/docker-metadata.lua \
--v /proc:/host/proc \
--v /sys:/host/sys \
--p 3001:3001 fluent/fluent-bit:latest
+echo 'TELE_TOKEN="nubmers:2part"' >> otel/.env
 ```
+
+Start containers
+```
+docker compose -f ./otel/docker-compose.yaml up
+```
+
+Example
+![otel.gif](../assets/otel.gif)
