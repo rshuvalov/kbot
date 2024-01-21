@@ -1,6 +1,7 @@
 APP := $(subst .git,,$(shell basename $(shell git remote get-url origin)))
 REGISTRY := rshuvalov
-VERSION=$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
+# VERSION=$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
+VERSION=$(shell git describe --tags --abbrev=0)
 TARGETOS=linux
 TARGETARCH=amd64
 

@@ -3,7 +3,7 @@ services:
 
   # Kbot
   kbot:
-    image: rshuvalov/kbot:v2.0.0-c891216-linux-amd64
+    image: rshuvalov/kbot:v2.0.1-linux-amd64
     environment:
       - METRICS_HOST=collector:4317
       - TELE_TOKEN=${TELE_TOKEN}
@@ -30,16 +30,17 @@ services:
       - "9090:9090"
   
   # FluentBit
-  # fluentbit:
-  #   image: fluent/fluent-bit:latest
-  #   volumes:
-  #     - ./fluent-bit/docker-metadata.lua:/fluent-bit/bin/docker-metadata.lua
-  #     - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-  #     - ./tmp/fluent-bit/var:/var
-  #     - ./tmp/fluent-bit/proc:/host/proc
-  #     - ./tmp/fluent-bit/sys:/host/sys
-  #   ports:
-  #     - "3001:3001"
+  fluentbit:
+    image: fluent/fluent-bit:latest
+    volumes:
+      - ./fluent-bit/docker-metadata.lua:/fluent-bit/bin/docker-metadata.lua
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./tmp/fluent-bit/var:/var
+      - ./tmp/fluent-bit/proc:/host/proc
+      - ./tmp/fluent-bit/sys:/host/sys
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    ports:
+      - "3001:3001"
 
   # Loki
   loki:
